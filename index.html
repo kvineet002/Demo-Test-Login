@@ -310,9 +310,10 @@
   <h1>Welcome back</h1>
   <p class="subtitle">Sign in to continue to your dashboard</p>
 
+  <!-- Changed from Email to Username -->
   <div class="field">
-    <label for="email">Email address</label>
-    <input type="email" id="email" placeholder="you@example.com" autocomplete="email" />
+    <label for="username">Username</label>
+    <input type="text" id="username" placeholder="admin" autocomplete="username" />
   </div>
 
   <div class="field">
@@ -358,34 +359,41 @@
 
 <script>
 function handleLogin() {
-  const email = document.getElementById('email').value.trim();
+  // Changed to target username instead of email
+  const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value;
   const btn = document.getElementById('login-btn');
   const alert = document.getElementById('alert');
 
   alert.style.display = 'none';
 
-  if (!email || !password) {
+  if (!username || !password) {
     showAlert('Please fill in all fields.', false); return;
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    showAlert('Please enter a valid email address.', false); return;
   }
 
   btn.classList.add('loading');
   btn.disabled = true;
 
-  // --- Replace this fetch() with your real backend endpoint ---
-  fetch('/api/auth/login', {
+  // Format data as x-www-form-urlencoded
+  const formData = new URLSearchParams();
+  formData.append('username', username);
+  formData.append('password', password);
+
+  // Send to /login with correct headers
+  fetch('/login', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password })
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: formData.toString()
   })
-  .then(res => res.json())
+  .then(res => {
+    // Handling non-JSON responses gracefully for testing
+    if (!res.ok) throw new Error('Login Failed');
+    return res.json().catch(() => ({})); 
+  })
   .then(data => {
     btn.classList.remove('loading');
     btn.disabled = false;
-    if (data.token) {
+    if (data.token || data.success) {
       localStorage.setItem('token', data.token);
       showAlert('Login successful! Redirecting…', true);
       setTimeout(() => window.location.href = '/dashboard', 1200);
@@ -393,11 +401,10 @@ function handleLogin() {
       showAlert(data.message || 'Invalid credentials.', false);
     }
   })
-  .catch(() => {
+  .catch((err) => {
     btn.classList.remove('loading');
     btn.disabled = false;
-    // Demo fallback — remove in production
-    showAlert('Backend not connected — wire up /api/auth/login to go live.', false);
+    showAlert('Backend not connected — wire up /login to go live.', false);
   });
 }
 
